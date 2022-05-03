@@ -8,7 +8,7 @@ service CatalogService @(path: '/catalog') {
         genre.name as genre}
         excluding {createdBy, modifiedBy};
 
-    @requires: 'authenticated-user'
+    // @requires: 'authenticated-user'
     action submitOrder (book: Books:ID, quantity: Integer);
 
 }

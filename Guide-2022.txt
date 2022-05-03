@@ -130,6 +130,16 @@ ID;parent_ID;name
 24;20;Speech
 
 
+/****************************************/
+/	sap.capire.bookshop-Genres.csv  	 /
+/****************************************/
+
+catalog/Books?$select=ID,title
+admin/Authors?$search=Bro
+admin/Authors?$expand=books($select=ID,title)
+
+
+
 Paso 4: Service Extension  
 
 /****************************************/
@@ -146,6 +156,7 @@ module.exports = async function (){
   this.on ('submitOrder', async req => {
     const {book,quantity} = req.data
 
+  //n delivers the modified rows quantity
     const n = await UPDATE (Books, book)
       .with ({ stock: {'-=': quantity }})
       .where ({ stock: {'>=': quantity }})
@@ -186,3 +197,343 @@ service AdminService @(requires: 'authenticated-user'){
         
     entity Authors as projection on my.Authors;
         annotate Authors with @odata.draft.enabled;
+
+Paso 6: Modificar la capacidad de editar headers
+
+/****************************************/
+/  app/admin-books/webapp/manifest.json	 /
+/****************************************/
+
+"BooksObjectPage": {
+          "type": "Component",
+          "id": "BooksObjectPage",
+          "name": "sap.fe.templates.ObjectPage",
+          "options": {
+            "settings": {
+              "editableHeaderContent": true,
+              "entitySet": "Books",
+              "navigation": {
+                "texts": {
+                  "detail": {
+                    "route": "Books_textsObjectPage"
+                  }
+                }
+              }
+            }
+          }
+        },
+
+
+/****************************************/
+/  Fiori Elements						 /
+/****************************************/
+
+Paso 7: Crear list page con annotations
+
+
+// Title Annotations - admin-service-ui.cds
+using { AdminService } from './admin-service';
+
+annotate AdminService.Books with {
+
+    title       @title: 'Title';
+    descr       @title: 'Description';
+    author      @title: 'Author';
+    genre       @title: 'Genre';
+    stock       @title: 'Stock Available';
+    price       @title: 'Price';
+
+};
+
+annotate AdminService.Authors with {
+
+    name            @title : 'Author Name';
+    dateOfBirth     @title : 'Date of Birth';
+    dateOfDeath     @title : 'Date of Death';
+    placeOfBirth    @title : 'Place of Birth';
+    placeOfDeath    @title : 'Place of Death';
+};
+
+
+//Books Anotations (List && Object Page)
+
+annotate AdminService.Books with @(
+
+    UI: {
+
+    	/**
+    	* List Page Anotations
+    	*/
+
+
+        //Selection fields general page
+        SelectionFields  : [
+            genre_ID,
+            author_ID
+        ],
+
+        //Line item general page
+        LineItem  : [
+            
+            {Value  :   title},
+            {
+                Value  :   author.name,
+                ![@HTML5.CssDefaults] : {
+                    $Type : 'HTML5.CssDefaultsType',
+                    width: '30%'
+                },    
+            },
+            {Value  :   stock},
+            {Value  :   price},
+            {
+                Value: currency_code,
+                Label:  ''
+            }
+            
+        ],
+
+        /**
+         * Object Page Annotations
+         */
+
+          // Header Info Object Page
+        HeaderInfo  : {
+            $Type : 'UI.HeaderInfoType',
+            TypeName : 'Book',
+            TypeNamePlural : 'Books',
+            Title   :   {
+                $Type   :   'UI.DataField',
+                Value   :   title
+            },
+            Description : {
+                $Type   : 'UI.DataField',
+                Value   :  author.name, 
+                Label   : 'Author: '
+            },
+        },
+
+         Facets  : [
+             {
+                 $Type: 'UI.ReferenceFacet', 
+                 Label: 'Main Information', 
+                 Target: ![@UI.FieldGroup#Main], 
+             }
+         ],
+
+         FieldGroup #Main : {
+             $Type : 'UI.FieldGroupType',
+             Label: 'Main Information',
+            Data : [
+                {
+                    $Type : 'UI.DataField',
+                    Value: descr,
+                    ![@HTML5.CssDefaults] : { width: '100%' },
+                    
+                
+                },
+                // {Value: author.name},
+                {
+                    Value: genre.name,
+                    Label: 'Genre'},
+                {
+                    Value: price
+                },
+                {
+                    Value: currency_code,
+                    Label: 'Currency'
+                }
+                
+            ],
+         },
+    }
+);
+
+
+/**
+* Catalog Service Specific Annotations
+*/
+
+using CatalogService as service from '../../srv/cat-service';
+using from '../common';
+
+//////////////////////////////////////////////
+//
+//	Books Object Page
+//
+annotate CatalogService.Books with @(UI : {
+    HeaderInfo        : {
+        TypeName       : 'Book',
+        TypeNamePlural : 'Books',
+        Description    : {Value : author}
+    },
+    HeaderFacets      : [{
+        $Type  : 'UI.ReferenceFacet',
+        Label  : '{i18n>Description}',
+        Target : '@UI.FieldGroup#Descr'
+    }, ],
+    Facets            : [{
+        $Type  : 'UI.ReferenceFacet',
+        Label  : '{i18n>Details}',
+        Target : '@UI.FieldGroup#Price'
+    }, ],
+    FieldGroup #Descr : {Data : [{Value : descr}, ]},
+    
+    FieldGroup #Price : {Data : [
+        {Value : price},
+        {
+            Value : currency_code,
+            Label : '{i18n>Currency}'
+        },
+    ]},
+});
+
+
+//////////////////////////////////////////////
+//	Books List Page
+//
+annotate CatalogService.Books with @(UI : {
+    SelectionFields : [
+        ID,
+        price,
+        currency_code
+    ],
+    LineItem        : [
+        {
+            Value : ID,
+            Label : '{i18n>Title}'
+        },
+        {
+            Value : author,
+            Label : '{i18n>Author}'
+        },
+        {Value : genre},
+        {Value : price},
+        {
+            Value : currency_code,
+            Label : ' '
+        },
+    ]
+}, );
+
+
+/////////////////////////////////
+/// Help values for save and edit
+
+annotate AdminService.Books with {
+    author @( 
+        Common: {
+            Text : author.name,
+            TextArrangement : #TextOnly,
+            ValueListWithFixedValues:   true,
+            ValueList : {
+                $Type : 'Common.ValueListType',
+                Label   :   'Authors',
+                CollectionPath : 'Authors',
+                Parameters : [
+                    {
+                        $Type: 'Common.ValueListParameterInOut',
+                        LocalDataProperty   :   author_ID,
+                        ValueListProperty   :   'ID'
+                    },
+                    {
+                        $Type   :   'Common.ValueListParameterDisplayOnly',
+                        ValueListProperty: 'name'
+                    }
+                ]
+            },
+        }
+    )
+};
+
+annotate AdminService.Books with {
+    genre @( 
+        Common: {
+            Text: genre.name,
+            TextArrangement : #TextOnly,
+            ValueListWithFixedValues: true,
+            ValueList : {
+                $Type : 'Common.ValueListType',
+                CollectionPath : 'Genres',
+                Parameters: [
+                    {
+                        $Type   :   'Common.ValueListParameterInOut',
+                        LocalDataProperty   :   genre_ID,
+                        ValueListProperty   :   'ID'
+                    },
+                    {
+                        $Type   :   'Common.ValueListParameterDisplayOnly',
+                        ValueListProperty   :   'name'
+                    }
+                ]
+            },
+        }
+    )
+};
+
+
+/**
+* Authors Freestyle Application
+*/
+
+/////////////////////////////////
+////Worklist column definition
+
+    <columns>
+        <Column id="idColumn">
+            <Text text="ID" id="idColumnTitle"/>
+        </Column>
+        <Column id="nameColumn" >
+            <Text text="Author's Name" id="nameColumnTitle"/>
+        </Column>
+        <Column id="dateOfBirthColumn">
+            <Text text="Author's Date of Birth" id="dateOfBirthColumnTitle"/>
+        </Column>
+        <Column id="daOfBirthColumn" hAlign="End">
+            <Text text="Author's Place of Birth" id="placeOfBirthColumnTitle"/>
+        </Column>
+    </columns>
+
+    <items>
+        <ColumnListItem
+            type="Navigation"
+            press=".onPress">
+            <cells>
+                <ObjectIdentifier
+                    title="{ID}"/>
+                <ObjectIdentifier
+                    title="{name}"/>
+                <ObjectIdentifier
+                    title="{dateOfBirth}"/>
+                <ObjectIdentifier
+                    title="{placeOfBirth}"/>
+            </cells>
+        </ColumnListItem>
+    </items>
+
+/////////////////////////////////
+////Objetct Page Definition
+
+
+//IMPORTANTE!!!!!
+xmlns:l="sap.ui.layout"
+
+<semantic:titleHeading>
+    <Title
+        text="{name}"
+        level="H2"/>
+</semantic:titleHeading>
+
+<semantic:headerContent>
+    <ObjectNumber />
+</semantic:headerContent>
+
+<semantic:sendEmailAction>
+    <semantic:SendEmailAction id="shareEmail" press=".onShareEmailPress"/>
+</semantic:sendEmailAction>
+
+<semantic:content>
+    <l:VerticalLayout>
+        <ObjectStatus title="Date of Death" text="{dateOfDeath}"/>
+        <ObjectStatus title="Place of Death" text="{placeOfDeath}"/>
+    </l:VerticalLayout>
+</semantic:content>

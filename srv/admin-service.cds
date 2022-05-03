@@ -1,6 +1,7 @@
 using { sap.capire.bookshop as my } from '../db/schema';
 
-service AdminService @(requires: 'authenticated-user'){
+// service AdminService @(requires: 'authenticated-user'){
+service AdminService {
 
     entity Books as projection on my.Books;
         annotate Books with @odata.draft.enabled;

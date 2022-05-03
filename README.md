@@ -1,6 +1,6 @@
 # Getting Started
 
-Welcome to your new project.
+Welcome to your bookshop project.
 
 It contains these folders and files, following our recommended project layout:
 
@@ -13,13 +13,15 @@ File or Folder | Purpose
 `readme.md` | this getting started guide
 
 
-## Next Steps
-
-- Open a new terminal and run `cds watch` 
+## Installation and Running
+- After clone the repository, go to the application directory and run `npm install`
+- In the terminal and run `cds watch` 
 - (in VS Code simply choose _**Terminal** > Run Task > cds watch_)
-- Start adding content, for example, a [db/schema.cds](db/schema.cds).
 
+
+## The content
+The project has 2 apps developed using Fiori Elements (admin-books is full developed and catalog books is only for browsing)
+The third app is developed as a freestyle worklist app, just to show the differences between both models and the development steps to work with this two different approach.
 
 ## Learn More
-
 Learn more at https://cap.cloud.sap/docs/get-started/.
